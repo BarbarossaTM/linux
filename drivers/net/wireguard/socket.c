@@ -35,6 +35,9 @@ static int send4(struct wg_device *wg, struct sk_buff *skb,
 	skb->dev = wg->dev;
 	skb->mark = wg->fwmark;
 
+	if (wg->bind_ifindex)
+		fl.flowi4_oif = wg->bind_ifindex;
+
 	rcu_read_lock_bh();
 	sock = rcu_dereference_bh(wg->sock4);
 
@@ -114,6 +117,9 @@ static int send6(struct wg_device *wg, struct sk_buff *skb,
 	skb_mark_not_on_list(skb);
 	skb->dev = wg->dev;
 	skb->mark = wg->fwmark;
+
+	if (wg->bind_ifindex)
+		fl.flowi6_oif = wg->bind_ifindex;
 
 	rcu_read_lock_bh();
 	sock = rcu_dereference_bh(wg->sock6);
@@ -378,6 +384,13 @@ int wg_socket_init(struct wg_device *wg, u16 port)
 	rcu_read_unlock();
 	if (unlikely(!net))
 		return -ENONET;
+
+	if (wg->bind_ifindex) {
+		port4.bind_ifindex = wg->bind_ifindex;
+#if IS_ENABLED(CONFIG_IPV6)
+		port6.bind_ifindex = wg->bind_ifindex;
+#endif
+	}
 
 #if IS_ENABLED(CONFIG_IPV6)
 retry:
